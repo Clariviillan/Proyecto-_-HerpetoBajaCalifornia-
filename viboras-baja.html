@@ -1,0 +1,1298 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Víboras de la Baja — Clasificador IA</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+<style>
+  :root {
+    --sand: #F5F0E8;
+    --sand-dark: #E8E0D0;
+    --clay: #C4956A;
+    --clay-dark: #9B6B42;
+    --ink: #1C1C1A;
+    --ink-soft: #3D3D38;
+    --stone: #7A7870;
+    --stone-light: #B8B5AD;
+    --venom: #D4421A;
+    --venom-light: #F9EDE8;
+    --safe: #2A7A4F;
+    --safe-light: #E5F4EC;
+    --accent: #8B4513;
+    --white: #FDFCFA;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--sand);
+    color: var(--ink);
+    min-height: 100vh;
+  }
+
+  /* NOISE TEXTURE OVERLAY */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 0;
+    opacity: 0.6;
+  }
+
+  /* NAV */
+  nav {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(245,240,232,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--sand-dark);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+  }
+
+  .nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .nav-logo {
+    width: 32px;
+    height: 32px;
+  }
+
+  .nav-title {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 15px;
+    color: var(--ink);
+    letter-spacing: -0.3px;
+  }
+
+  .nav-title span {
+    color: var(--clay);
+  }
+
+  .nav-badge {
+    font-size: 11px;
+    font-weight: 500;
+    background: var(--ink);
+    color: var(--sand);
+    padding: 3px 9px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  /* HERO */
+  .hero {
+    position: relative;
+    z-index: 1;
+    padding: 4rem 2rem 3rem;
+    text-align: center;
+    max-width: 700px;
+    margin: 0 auto;
+  }
+
+  .hero-eyebrow {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--clay);
+    margin-bottom: 1rem;
+  }
+
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.4rem, 6vw, 3.8rem);
+    font-weight: 800;
+    line-height: 1.05;
+    color: var(--ink);
+    letter-spacing: -2px;
+    margin-bottom: 1.2rem;
+  }
+
+  .hero h1 em {
+    font-style: normal;
+    color: var(--clay);
+  }
+
+  .hero p {
+    font-size: 16px;
+    color: var(--stone);
+    line-height: 1.7;
+    font-weight: 300;
+    max-width: 520px;
+    margin: 0 auto 2rem;
+  }
+
+  /* DECORATIVE SNAKE SVG */
+  .snake-divider {
+    width: 120px;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--clay), transparent);
+    margin: 0 auto 2rem;
+  }
+
+  /* MAIN CONTAINER */
+  .container {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 0 1.5rem 4rem;
+  }
+
+  /* MODEL STATUS */
+  #status-bar {
+    background: var(--white);
+    border: 1px solid var(--sand-dark);
+    border-radius: 14px;
+    padding: 1rem 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 2rem;
+    transition: all 0.3s ease;
+  }
+
+  .status-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--stone-light);
+    flex-shrink: 0;
+    transition: background 0.3s;
+  }
+
+  .status-dot.loading {
+    background: var(--clay);
+    animation: pulse 1.2s infinite;
+  }
+
+  .status-dot.ready {
+    background: var(--safe);
+  }
+
+  .status-dot.error {
+    background: var(--venom);
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  #status-text {
+    font-size: 14px;
+    color: var(--stone);
+    flex: 1;
+  }
+
+  /* UPLOAD ZONE */
+  .panel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+
+  @media (max-width: 640px) {
+    .panel-grid { grid-template-columns: 1fr; }
+  }
+
+  .panel {
+    background: var(--white);
+    border: 1px solid var(--sand-dark);
+    border-radius: 18px;
+    padding: 1.5rem;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .panel:hover {
+    border-color: var(--clay);
+    transform: translateY(-2px);
+    box-shadow: 0 12px 32px rgba(196,149,106,0.15);
+  }
+
+  .panel::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, var(--clay), var(--clay-dark));
+    transform: scaleX(0);
+    transition: transform 0.3s ease;
+    transform-origin: left;
+  }
+
+  .panel:hover::after,
+  .panel.active::after {
+    transform: scaleX(1);
+  }
+
+  .panel.active {
+    border-color: var(--clay);
+  }
+
+  .panel-icon {
+    width: 48px;
+    height: 48px;
+    background: var(--sand);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+  }
+
+  .panel-icon svg {
+    width: 24px;
+    height: 24px;
+    stroke: var(--clay);
+    stroke-width: 1.5;
+    fill: none;
+  }
+
+  .panel h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--ink);
+    margin-bottom: 4px;
+  }
+
+  .panel p {
+    font-size: 13px;
+    color: var(--stone);
+    line-height: 1.5;
+    font-weight: 300;
+  }
+
+  /* DROP ZONE */
+  #drop-zone {
+    background: var(--white);
+    border: 2px dashed var(--sand-dark);
+    border-radius: 18px;
+    padding: 3rem 2rem;
+    text-align: center;
+    transition: all 0.25s ease;
+    cursor: pointer;
+    margin-bottom: 1.5rem;
+    display: none;
+  }
+
+  #drop-zone.active-zone {
+    border-color: var(--clay);
+    background: rgba(196,149,106,0.04);
+  }
+
+  #drop-zone.drag-over {
+    border-color: var(--clay-dark);
+    background: rgba(196,149,106,0.08);
+    transform: scale(1.01);
+  }
+
+  #drop-zone svg {
+    width: 40px;
+    height: 40px;
+    stroke: var(--stone-light);
+    stroke-width: 1.2;
+    fill: none;
+    margin-bottom: 1rem;
+  }
+
+  #drop-zone p {
+    font-size: 14px;
+    color: var(--stone);
+    margin-bottom: 8px;
+  }
+
+  #drop-zone span {
+    font-size: 12px;
+    color: var(--stone-light);
+  }
+
+  #file-input { display: none; }
+
+  /* CAMERA VIEW */
+  #camera-container {
+    display: none;
+    background: var(--white);
+    border: 1px solid var(--sand-dark);
+    border-radius: 18px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  #camera-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--sand-dark);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  #camera-header span {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--stone);
+  }
+
+  .cam-live-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--venom);
+  }
+
+  .cam-live-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--venom);
+    animation: pulse 1s infinite;
+  }
+
+  #webcam-wrapper {
+    position: relative;
+    background: #111;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 300px;
+  }
+
+  #webcam {
+    width: 100%;
+    max-height: 380px;
+    object-fit: cover;
+    display: block;
+  }
+
+  #capture-overlay {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+
+  .viewfinder {
+    width: 200px;
+    height: 200px;
+    border: 2px solid rgba(196,149,106,0.7);
+    border-radius: 12px;
+    box-shadow: 0 0 0 9999px rgba(0,0,0,0.3);
+  }
+
+  #camera-footer {
+    padding: 1.25rem 1.5rem;
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+  }
+
+  /* PREVIEW */
+  #preview-container {
+    display: none;
+    background: var(--white);
+    border: 1px solid var(--sand-dark);
+    border-radius: 18px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  #preview-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--sand-dark);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  #preview-header span {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--stone);
+  }
+
+  #preview-img {
+    width: 100%;
+    max-height: 360px;
+    object-fit: contain;
+    background: #111;
+    display: block;
+  }
+
+  /* BUTTONS */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0.7rem 1.4rem;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s ease;
+  }
+
+  .btn svg {
+    width: 16px;
+    height: 16px;
+    stroke: currentColor;
+    stroke-width: 1.8;
+    fill: none;
+    flex-shrink: 0;
+  }
+
+  .btn-primary {
+    background: var(--ink);
+    color: var(--sand);
+  }
+
+  .btn-primary:hover {
+    background: var(--ink-soft);
+    transform: translateY(-1px);
+  }
+
+  .btn-primary:disabled {
+    background: var(--stone-light);
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .btn-clay {
+    background: var(--clay);
+    color: white;
+  }
+
+  .btn-clay:hover {
+    background: var(--clay-dark);
+    transform: translateY(-1px);
+  }
+
+  .btn-outline {
+    background: transparent;
+    color: var(--stone);
+    border: 1px solid var(--sand-dark);
+  }
+
+  .btn-outline:hover {
+    border-color: var(--stone);
+    color: var(--ink);
+  }
+
+  .btn-danger {
+    background: var(--venom-light);
+    color: var(--venom);
+  }
+
+  .btn-danger:hover {
+    background: var(--venom);
+    color: white;
+  }
+
+  /* ANALYZE BUTTON */
+  #analyze-btn {
+    width: 100%;
+    justify-content: center;
+    padding: 1rem;
+    border-radius: 14px;
+    font-size: 15px;
+    margin-bottom: 1.5rem;
+  }
+
+  /* RESULTS */
+  #results-container {
+    display: none;
+    animation: fadeUp 0.5s ease forwards;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .result-card {
+    background: var(--white);
+    border: 1px solid var(--sand-dark);
+    border-radius: 18px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  .result-header {
+    padding: 1.5rem;
+    border-bottom: 1px solid var(--sand-dark);
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .result-verdict {
+    flex: 1;
+  }
+
+  .result-label {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .result-label.venomous {
+    color: var(--venom);
+  }
+
+  .result-label.safe {
+    color: var(--safe);
+  }
+
+  .result-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.5px;
+    line-height: 1.2;
+    margin-bottom: 4px;
+  }
+
+  .result-common {
+    font-size: 14px;
+    color: var(--stone);
+    font-style: italic;
+  }
+
+  .result-confidence-badge {
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .confidence-pct {
+    font-family: 'Syne', sans-serif;
+    font-size: 2.5rem;
+    font-weight: 800;
+    letter-spacing: -2px;
+    line-height: 1;
+    color: var(--clay);
+  }
+
+  .confidence-pct span {
+    font-size: 1.2rem;
+  }
+
+  .confidence-label {
+    font-size: 11px;
+    color: var(--stone-light);
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+
+  /* WARNING BANNER */
+  .warning-banner {
+    margin: 0 1.5rem 1.5rem;
+    padding: 1rem 1.25rem;
+    border-radius: 10px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .warning-banner.danger {
+    background: var(--venom-light);
+    border-left: 3px solid var(--venom);
+  }
+
+  .warning-banner.ok {
+    background: var(--safe-light);
+    border-left: 3px solid var(--safe);
+  }
+
+  .warning-banner svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    fill: none;
+    stroke-width: 1.8;
+    margin-top: 1px;
+  }
+
+  .warning-banner.danger svg { stroke: var(--venom); }
+  .warning-banner.ok svg { stroke: var(--safe); }
+
+  .warning-banner p {
+    font-size: 13.5px;
+    line-height: 1.5;
+    font-weight: 400;
+  }
+
+  .warning-banner.danger p { color: #8B1A00; }
+  .warning-banner.ok p { color: #1A5C35; }
+
+  /* BAR CHART */
+  .bars-section {
+    padding: 1.5rem;
+  }
+
+  .bars-title {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--stone);
+    margin-bottom: 1rem;
+  }
+
+  .bar-row {
+    display: grid;
+    grid-template-columns: 220px 1fr 50px;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  @media (max-width: 600px) {
+    .bar-row { grid-template-columns: 140px 1fr 44px; }
+  }
+
+  .bar-label {
+    font-size: 12px;
+    color: var(--ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .bar-label.venomous-label {
+    color: var(--venom);
+    font-weight: 500;
+  }
+
+  .bar-track {
+    height: 8px;
+    background: var(--sand);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .bar-fill {
+    height: 100%;
+    border-radius: 4px;
+    transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+    background: var(--stone-light);
+  }
+
+  .bar-fill.top {
+    background: linear-gradient(90deg, var(--clay), var(--clay-dark));
+  }
+
+  .bar-fill.venomous-bar {
+    background: linear-gradient(90deg, #E85A30, var(--venom));
+  }
+
+  .bar-fill.safe-bar {
+    background: linear-gradient(90deg, #3A9E68, var(--safe));
+  }
+
+  .bar-pct {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--stone);
+    text-align: right;
+  }
+
+  /* DISCLAIMER */
+  .disclaimer {
+    background: var(--sand-dark);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    margin-bottom: 3rem;
+  }
+
+  .disclaimer svg {
+    width: 16px;
+    height: 16px;
+    stroke: var(--stone);
+    stroke-width: 1.8;
+    fill: none;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .disclaimer p {
+    font-size: 12px;
+    color: var(--stone);
+    line-height: 1.6;
+  }
+
+  .disclaimer strong {
+    color: var(--ink-soft);
+  }
+
+  /* SPECIES GALLERY */
+  .gallery {
+    margin-top: 3rem;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  .section-title {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.5px;
+  }
+
+  .section-sub {
+    font-size: 13px;
+    color: var(--stone-light);
+  }
+
+  .species-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+
+  .species-card {
+    background: var(--white);
+    border: 1px solid var(--sand-dark);
+    border-radius: 14px;
+    padding: 1.1rem;
+    transition: all 0.2s;
+  }
+
+  .species-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.06);
+  }
+
+  .species-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 5px;
+    margin-bottom: 8px;
+  }
+
+  .species-tag.v {
+    background: var(--venom-light);
+    color: var(--venom);
+  }
+
+  .species-tag.nv {
+    background: var(--safe-light);
+    color: var(--safe);
+  }
+
+  .species-name {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1.3;
+    margin-bottom: 3px;
+  }
+
+  .species-sci {
+    font-size: 11.5px;
+    color: var(--stone);
+    font-style: italic;
+  }
+
+  /* FOOTER */
+  footer {
+    position: relative;
+    z-index: 1;
+    border-top: 1px solid var(--sand-dark);
+    padding: 1.5rem 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  footer p {
+    font-size: 12px;
+    color: var(--stone-light);
+  }
+
+  footer strong {
+    color: var(--stone);
+    font-weight: 500;
+  }
+
+  /* LOADING SPINNER */
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid rgba(255,255,255,0.3);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* CANVAS hidden for TM */
+  #tm-canvas { display: none; }
+
+  /* RESET LINK */
+  .reset-link {
+    background: none;
+    border: none;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    color: var(--stone);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .reset-link:hover { color: var(--ink); }
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-brand">
+    <svg class="nav-logo" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M6 26 C6 26, 8 20, 14 18 C18 16.5, 22 14, 24 10 C26 6.5, 24 4, 22 5 C20 6, 20 9, 22 10" stroke="#C4956A" stroke-width="2" stroke-linecap="round" fill="none"/>
+      <path d="M22 5 C24 3.5, 27 4, 27 6 C27 8, 25 8.5, 23 8" stroke="#9B6B42" stroke-width="1.5" stroke-linecap="round" fill="none"/>
+      <circle cx="25.5" cy="4.5" r="1" fill="#C4956A"/>
+    </svg>
+    <span class="nav-title">Víboras de la <em style="font-style:normal;color:var(--clay)">Baja</em></span>
+  </div>
+  <span class="nav-badge">IA · TensorFlow.js</span>
+</nav>
+
+<!-- HERO -->
+<div class="hero">
+  <p class="hero-eyebrow">Clasificador de Serpientes</p>
+  <h1>Identifica víboras<br>de <em>Baja California</em></h1>
+  <div class="snake-divider"></div>
+  <p>Sistema de identificación con inteligencia artificial entrenado con 7 especies nativas. Sube una foto o usa tu cámara para clasificar si una serpiente es venenosa o no venenosa.</p>
+</div>
+
+<!-- MAIN -->
+<div class="container">
+
+  <!-- STATUS -->
+  <div id="status-bar">
+    <div class="status-dot loading" id="status-dot"></div>
+    <span id="status-text">Cargando modelo de IA... Por favor espera.</span>
+    <button class="btn btn-outline" onclick="loadModel()" id="retry-btn" style="display:none; padding: 0.4rem 0.9rem; font-size: 13px;">Reintentar</button>
+  </div>
+
+  <!-- INPUT MODE SELECTION -->
+  <div class="panel-grid" id="mode-selector">
+    <div class="panel" id="upload-panel" onclick="selectMode('upload')">
+      <div class="panel-icon">
+        <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+      </div>
+      <h3>Subir archivo</h3>
+      <p>Selecciona o arrastra una imagen JPG, PNG o foto desde tu galería.</p>
+    </div>
+    <div class="panel" id="camera-panel" onclick="selectMode('camera')">
+      <div class="panel-icon">
+        <svg viewBox="0 0 24 24"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+      </div>
+      <h3>Usar cámara</h3>
+      <p>Toma una foto en tiempo real con la cámara de tu dispositivo.</p>
+    </div>
+  </div>
+
+  <!-- UPLOAD ZONE -->
+  <div id="drop-zone" onclick="document.getElementById('file-input').click()"
+    ondragover="event.preventDefault();this.classList.add('drag-over')"
+    ondragleave="this.classList.remove('drag-over')"
+    ondrop="handleDrop(event)">
+    <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+    <p>Arrastra tu imagen aquí o haz clic para seleccionar</p>
+    <span>JPG, PNG, WEBP — máx. 10 MB</span>
+  </div>
+  <input type="file" id="file-input" accept="image/*" onchange="handleFile(this.files[0])">
+
+  <!-- CAMERA -->
+  <div id="camera-container">
+    <div id="camera-header">
+      <span>Cámara en vivo</span>
+      <div class="cam-live-badge">
+        <div class="cam-live-dot"></div>
+        <span>LIVE</span>
+      </div>
+    </div>
+    <div id="webcam-wrapper">
+      <video id="webcam" autoplay playsinline muted></video>
+      <div id="capture-overlay"><div class="viewfinder"></div></div>
+    </div>
+    <div id="camera-footer">
+      <button class="btn btn-clay" onclick="capturePhoto()">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/></svg>
+        Tomar foto
+      </button>
+      <button class="btn btn-outline" onclick="stopCamera()">
+        <svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        Cerrar cámara
+      </button>
+    </div>
+  </div>
+
+  <!-- PREVIEW -->
+  <div id="preview-container">
+    <div id="preview-header">
+      <span>Imagen seleccionada</span>
+      <button class="reset-link" onclick="resetAll()">✕ Cambiar imagen</button>
+    </div>
+    <img id="preview-img" alt="Imagen a clasificar">
+  </div>
+
+  <!-- ANALYZE BTN -->
+  <button class="btn btn-primary" id="analyze-btn" onclick="analyzeImage()" disabled style="display:none">
+    <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    Analizar imagen
+  </button>
+
+  <!-- RESULTS -->
+  <div id="results-container">
+    <div class="result-card">
+      <div class="result-header">
+        <div class="result-verdict">
+          <p class="result-label" id="res-label">—</p>
+          <p class="result-name" id="res-name">—</p>
+          <p class="result-common" id="res-common">—</p>
+        </div>
+        <div class="result-confidence-badge">
+          <div class="confidence-pct" id="res-pct">—<span>%</span></div>
+          <div class="confidence-label">confianza</div>
+        </div>
+      </div>
+
+      <div class="warning-banner" id="res-warning" style="display:none">
+        <svg viewBox="0 0 24 24"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <p id="res-warning-text"></p>
+      </div>
+
+      <div class="bars-section">
+        <p class="bars-title">Distribución de probabilidad</p>
+        <div id="bars-list"></div>
+      </div>
+    </div>
+
+    <div class="disclaimer">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <p><strong>Aviso:</strong> Este sistema es una herramienta educativa de apoyo y no reemplaza el criterio de un experto. Ante la duda, mantén distancia de cualquier serpiente. En caso de mordida, busca atención médica de inmediato.</p>
+    </div>
+
+    <div style="text-align:center; margin-bottom: 2rem;">
+      <button class="btn btn-outline" onclick="resetAll()">
+        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+        Analizar otra imagen
+      </button>
+    </div>
+  </div>
+
+  <!-- SPECIES GALLERY -->
+  <div class="gallery">
+    <div class="section-header">
+      <span class="section-title">Especies detectables</span>
+      <span class="section-sub">7 especies · Baja California</span>
+    </div>
+    <div class="species-grid">
+      <div class="species-card">
+        <span class="species-tag v">⚠ Venenosa</span>
+        <p class="species-name">Cascabel de Baja</p>
+        <p class="species-sci">Crotalus enyo</p>
+      </div>
+      <div class="species-card">
+        <span class="species-tag v">⚠ Venenosa</span>
+        <p class="species-name">Cascabel de Mitch</p>
+        <p class="species-sci">Crotalus mitchellii</p>
+      </div>
+      <div class="species-card">
+        <span class="species-tag v">⚠ Venenosa</span>
+        <p class="species-name">Cascabel cola negra</p>
+        <p class="species-sci">Crotalus molossus</p>
+      </div>
+      <div class="species-card">
+        <span class="species-tag nv">✓ No venenosa</span>
+        <p class="species-name">Ratonera de Baja</p>
+        <p class="species-sci">Bogertophis rosaliae</p>
+      </div>
+      <div class="species-card">
+        <span class="species-tag nv">✓ No venenosa</span>
+        <p class="species-name">Corredora roja norteña</p>
+        <p class="species-sci">Coluber flagellum</p>
+      </div>
+      <div class="species-card">
+        <span class="species-tag nv">✓ No venenosa</span>
+        <p class="species-name">Corredora rayada</p>
+        <p class="species-sci">Masticophis lateralis</p>
+      </div>
+      <div class="species-card">
+        <span class="species-tag nv">✓ No venenosa</span>
+        <p class="species-name">Falsa coralillo</p>
+        <p class="species-sci">Lampropeltis californiae</p>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<footer>
+  <p>Modelo entrenado con <strong>Teachable Machine</strong> · Google + TensorFlow.js</p>
+  <p>Proyecto de <strong>Identificación Herpetológica</strong> · Baja California, México</p>
+</footer>
+
+<canvas id="tm-canvas"></canvas>
+
+<script>
+const MODEL_URL = './';
+let model = null;
+let currentImageElement = null;
+let cameraStream = null;
+
+const LABELS = [
+  "Venenosa Crotalus enyo",
+  "Venenosa  Crotalus mitchellii",
+  "Venenosa Crotalus molossus ",
+  "No venenosa RatSnake Bogertophis ",
+  "No venenosa RedRunner norteña roja",
+  "No venenosa Corredora Rayada Masticophis Lateralis",
+  " No Venenosa California kingsnake"
+];
+
+const DISPLAY_NAMES = {
+  "Venenosa Crotalus enyo": { name: "Crotalus enyo", common: "Cascabel de Baja California", venomous: true },
+  "Venenosa  Crotalus mitchellii": { name: "Crotalus mitchellii", common: "Cascabel de Mitchell", venomous: true },
+  "Venenosa Crotalus molossus ": { name: "Crotalus molossus", common: "Cascabel cola negra", venomous: true },
+  "No venenosa RatSnake Bogertophis ": { name: "Bogertophis rosaliae", common: "Ratonera de Baja California", venomous: false },
+  "No venenosa RedRunner norteña roja": { name: "Coluber flagellum", common: "Corredora roja norteña", venomous: false },
+  "No venenosa Corredora Rayada Masticophis Lateralis": { name: "Masticophis lateralis", common: "Corredora rayada californiana", venomous: false },
+  " No Venenosa California kingsnake": { name: "Lampropeltis californiae", common: "Falsa coralillo californiana", venomous: false }
+};
+
+async function loadModel() {
+  const dot = document.getElementById('status-dot');
+  const text = document.getElementById('status-text');
+  const retryBtn = document.getElementById('retry-btn');
+  dot.className = 'status-dot loading';
+  text.textContent = 'Cargando modelo de IA...';
+  retryBtn.style.display = 'none';
+  try {
+    model = await tmImage.load(MODEL_URL + 'model.json', MODEL_URL + 'metadata.json');
+    dot.className = 'status-dot ready';
+    text.textContent = 'Modelo listo — 7 especies de Baja California cargadas.';
+  } catch (e) {
+    dot.className = 'status-dot error';
+    text.innerHTML = 'No se encontró el modelo. <strong>Coloca model.json, weights.bin y metadata.json en la misma carpeta que este archivo HTML.</strong>';
+    retryBtn.style.display = 'inline-flex';
+    console.error(e);
+  }
+}
+
+function selectMode(mode) {
+  document.getElementById('upload-panel').classList.remove('active');
+  document.getElementById('camera-panel').classList.remove('active');
+  document.getElementById('drop-zone').style.display = 'none';
+  document.getElementById('camera-container').style.display = 'none';
+
+  if (mode === 'upload') {
+    document.getElementById('upload-panel').classList.add('active');
+    document.getElementById('drop-zone').style.display = 'block';
+    document.getElementById('drop-zone').classList.add('active-zone');
+    stopCamera();
+  } else {
+    document.getElementById('camera-panel').classList.add('active');
+    document.getElementById('camera-container').style.display = 'block';
+    startCamera();
+  }
+}
+
+async function startCamera() {
+  try {
+    cameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    document.getElementById('webcam').srcObject = cameraStream;
+  } catch (e) {
+    alert('No se pudo acceder a la cámara. Verifica los permisos del navegador.');
+    selectMode('upload');
+  }
+}
+
+function stopCamera() {
+  if (cameraStream) {
+    cameraStream.getTracks().forEach(t => t.stop());
+    cameraStream = null;
+  }
+  document.getElementById('camera-container').style.display = 'none';
+}
+
+function capturePhoto() {
+  const video = document.getElementById('webcam');
+  const canvas = document.getElementById('tm-canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    showPreview(url);
+    stopCamera();
+  }, 'image/jpeg', 0.92);
+}
+
+function handleFile(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => showPreview(e.target.result);
+  reader.readAsDataURL(file);
+}
+
+function handleDrop(e) {
+  e.preventDefault();
+  document.getElementById('drop-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.startsWith('image/')) handleFile(file);
+}
+
+function showPreview(src) {
+  const img = document.getElementById('preview-img');
+  img.src = src;
+  img.onload = () => {
+    currentImageElement = img;
+    document.getElementById('preview-container').style.display = 'block';
+    document.getElementById('analyze-btn').style.display = 'flex';
+    document.getElementById('analyze-btn').disabled = !model;
+    document.getElementById('drop-zone').style.display = 'none';
+    document.getElementById('results-container').style.display = 'none';
+  };
+}
+
+async function analyzeImage() {
+  if (!model || !currentImageElement) return;
+  const btn = document.getElementById('analyze-btn');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Analizando...';
+
+  try {
+    const predictions = await model.predict(currentImageElement);
+    showResults(predictions);
+  } catch (e) {
+    alert('Error al analizar. Asegúrate de que la imagen sea válida.');
+    console.error(e);
+  }
+
+  btn.innerHTML = '<svg viewBox="0 0 24 24" style="width:16px;height:16px;stroke:currentColor;stroke-width:1.8;fill:none"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Analizar imagen';
+  btn.disabled = false;
+}
+
+function showResults(predictions) {
+  predictions.sort((a, b) => b.probability - a.probability);
+  const top = predictions[0];
+  const info = DISPLAY_NAMES[top.className] || { name: top.className, common: '', venomous: top.className.toLowerCase().includes('venen') };
+  const pct = Math.round(top.probability * 100);
+  const isVenomous = info.venomous;
+
+  document.getElementById('res-label').textContent = isVenomous ? '⚠ Especie venenosa' : '✓ Especie no venenosa';
+  document.getElementById('res-label').className = 'result-label ' + (isVenomous ? 'venomous' : 'safe');
+  document.getElementById('res-name').textContent = info.name;
+  document.getElementById('res-common').textContent = info.common;
+  document.getElementById('res-pct').innerHTML = pct + '<span>%</span>';
+
+  const warning = document.getElementById('res-warning');
+  const warnText = document.getElementById('res-warning-text');
+  warning.style.display = 'flex';
+  if (isVenomous) {
+    warning.className = 'warning-banner danger';
+    warnText.textContent = 'Esta especie posee veneno hemotóxico. No intentes manipularla. En caso de mordida, acude a urgencias médicas inmediatamente y lleva una foto de la serpiente.';
+  } else {
+    warning.className = 'warning-banner ok';
+    warnText.textContent = 'Esta especie no representa un riesgo de envenenamiento. Sin embargo, cualquier serpiente puede morder si se siente amenazada. Observa desde una distancia prudente.';
+  }
+
+  const barsList = document.getElementById('bars-list');
+  barsList.innerHTML = '';
+  predictions.forEach((p, i) => {
+    const pInfo = DISPLAY_NAMES[p.className] || { name: p.className, venomous: p.className.toLowerCase().includes('venen') };
+    const pPct = Math.round(p.probability * 100);
+    const isTop = i === 0;
+    const isV = pInfo.venomous;
+    const fillClass = isTop ? (isV ? 'bar-fill venomous-bar top' : 'bar-fill safe-bar top') : 'bar-fill';
+    const labelClass = isV ? 'bar-label venomous-label' : 'bar-label';
+    const shortName = pInfo.name.length > 28 ? pInfo.name.substring(0, 26) + '…' : pInfo.name;
+    barsList.innerHTML += `
+      <div class="bar-row">
+        <span class="${labelClass}">${shortName}</span>
+        <div class="bar-track"><div class="${fillClass}" style="width:0%" data-w="${pPct}%"></div></div>
+        <span class="bar-pct">${pPct}%</span>
+      </div>`;
+  });
+
+  document.getElementById('results-container').style.display = 'block';
+  document.getElementById('results-container').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  setTimeout(() => {
+    document.querySelectorAll('.bar-fill[data-w]').forEach(el => {
+      el.style.width = el.dataset.w;
+    });
+  }, 100);
+}
+
+function resetAll() {
+  currentImageElement = null;
+  document.getElementById('preview-container').style.display = 'none';
+  document.getElementById('analyze-btn').style.display = 'none';
+  document.getElementById('results-container').style.display = 'none';
+  document.getElementById('drop-zone').style.display = 'block';
+  document.getElementById('upload-panel').classList.remove('active');
+  document.getElementById('camera-panel').classList.remove('active');
+  document.getElementById('file-input').value = '';
+}
+
+loadModel();
+</script>
+</body>
+</html>
