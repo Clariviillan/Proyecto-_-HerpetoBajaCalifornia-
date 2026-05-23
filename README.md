@@ -1,0 +1,1 @@
+Este repo consta de 4 archivos, metadata.json, model.json y weights.bin que fueron los archivos proporcionados por google teachable machine del modelo prevamente entrenado de las 7 clases de las viboras de baja calufornia, conjunto con codigo html para la interfaz sencillla que puede abrir en cualquuier navegador 
