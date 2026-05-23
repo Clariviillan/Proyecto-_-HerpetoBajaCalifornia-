@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Víboras de la Baja — Clasificador IA</title>
+<title>Víboras de Baja — Clasificador/Reconocedor</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet">
@@ -524,21 +524,21 @@ footer strong{color:var(--text2);font-weight:500}
       <div class="nav-logo-wrap">
         <svg viewBox="0 0 24 24"><path d="M4 20 C4 20, 6 15, 11 13 C14.5 11.8, 18 9.5, 19.5 6.5 C21 3.5, 19.5 2, 18 3 C16.5 4, 16.5 7, 18 8"/><path d="M18 3 C20 1.5, 22 2.5, 22 4.5 C22 6.5, 20.5 7, 18.5 6.5"/><circle cx="20.5" cy="2.5" r="1"/></svg>
       </div>
-      <span class="nav-title">Víboras de la <span>Baja</span></span>
+      <span class="nav-title">Víboras de <span>Baja</span></span>
     </div>
     <div class="nav-right">
       <span class="nav-pill">Baja California, MX</span>
-      <span class="nav-badge">IA · TensorFlow.js</span>
+      <span class="nav-badge">HTML· TensorFlow.js</span>
     </div>
   </nav>
 
   <div class="hero-content">
     <div class="hero-eyebrow">Clasificador de Serpientes · 7 especies</div>
     <h1>
-      Víboras de la<br>
+      Víboras de <br>
       <em>Baja California</em>
     </h1>
-    <p class="hero-desc">Sistema de identificación por inteligencia artificial. Sube una foto o usa tu cámara para detectar si una serpiente es venenosa o no.</p>
+    <p class="hero-desc">Sistema de identificación por Entrenamiento Sube una foto clara o usa tu cámara para detectar si una serpiente es venenosa o no y saber informacion de ella.</p>
     <a class="hero-cta" href="#app" onclick="document.getElementById('app').scrollIntoView({behavior:'smooth'});return false;">
       <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
       Comenzar análisis
@@ -845,11 +845,182 @@ function showResults(predictions){
   }else{
     warn.className='warning-banner ok';
     wt.textContent='Esta especie no representa riesgo de envenenamiento. Cualquier serpiente puede morder si se siente amenazada — observa siempre desde una distancia prudente.';
+    document.getElementById('res-warning-text').innerHTML += '<br><br>' + info.info;
   }
   const list=document.getElementById('bars-list');
   list.innerHTML='';
   predictions.forEach((p,i)=>{
-    const pi=DISPLAY_NAMES[p.className]||{name:p.className,venomous:p.className.toLowerCase().includes('venen')};
+    const DISPLAY_NAMES = {
+
+  "Venenosa Crotalus enyo":{
+    name:"Crotalus enyo",
+    common:"Serpiente de cascabel de Baja California",
+    venomous:true,
+    info:`
+      <strong>⚠️ VENENOSA</strong><br><br>
+
+      <strong>Información importante</strong><br>
+      • Serpiente endémica de Baja California.<br>
+      • Vive en zonas desérticas y rocosas.<br>
+      • Posee cascabel como advertencia.<br><br>
+
+      <strong>Importancia en Baja California</strong><br>
+      • Controla poblaciones de roedores.<br>
+      • Mantiene el equilibrio ecológico del desierto.<br>
+      • Forma parte de la biodiversidad regional.<br><br>
+
+      <strong>En caso de mordida</strong><br>
+      • Mantener la calma.<br>
+      • Inmovilizar la zona afectada.<br>
+      • Buscar atención médica inmediata.
+    `
+  },
+
+  "Venenosa Crotalus mitchellii":{
+    name:"Crotalus mitchellii",
+    common:"Serpiente de cascabel moteada",
+    venomous:true,
+    info:`
+      <strong>⚠️ VENENOSA</strong><br><br>
+
+      <strong>Información importante</strong><br>
+      • Tiene excelente camuflaje entre rocas.<br>
+      • Habita zonas áridas y montañosas.<br>
+      • Sus colores cambian según el entorno.<br><br>
+
+      <strong>Importancia en Baja California</strong><br>
+      • Controla roedores y pequeños reptiles.<br>
+      • Ayuda al equilibrio natural del ecosistema.<br>
+      • Es parte de la fauna nativa del estado.<br><br>
+
+      <strong>En caso de mordida</strong><br>
+      • Mantener inmóvil la extremidad.<br>
+      • Retirar objetos ajustados.<br>
+      • Acudir al hospital inmediatamente.
+    `
+  },
+
+  "Venenosa Crotalus molossus":{
+    name:"Crotalus molossus",
+    common:"Serpiente de cascabel cola negra",
+    venomous:true,
+    info:`
+      <strong>⚠️ VENENOSA</strong><br><br>
+
+      <strong>Información importante</strong><br>
+      • Reconocida por su cola negra.<br>
+      • Vive en zonas semidesérticas y montañosas.<br>
+      • Generalmente evita a los humanos.<br><br>
+
+      <strong>Importancia en Baja California</strong><br>
+      • Ayuda a reducir plagas de roedores.<br>
+      • Mantiene el balance de la cadena alimenticia.<br>
+      • Importante para la conservación del desierto.<br><br>
+
+      <strong>En caso de mordida</strong><br>
+      • Mantener la calma.<br>
+      • Evitar movimientos innecesarios.<br>
+      • Buscar ayuda médica urgente.
+    `
+  },
+
+  "No venenosa RatSnake Bogertophis":{
+    name:"Bogertophis rosaliae",
+    common:"Culebra rata de Baja California",
+    venomous:false,
+    info:`
+      <strong>✅ NO VENENOSA</strong><br><br>
+
+      <strong>Información importante</strong><br>
+      • Serpiente endémica de Baja California.<br>
+      • Tímida y poco agresiva.<br>
+      • Puede alcanzar gran longitud.<br><br>
+
+      <strong>Importancia en Baja California</strong><br>
+      • Controla poblaciones de roedores.<br>
+      • Ayuda a disminuir plagas agrícolas.<br>
+      • Contribuye al equilibrio ecológico regional.<br><br>
+
+      <strong>En caso de mordida</strong><br>
+      • Lavar la herida con agua y jabón.<br>
+      • Desinfectar la zona.<br>
+      • Vigilar signos de infección.
+    `
+  },
+
+  "No venenosa RedRunner norteña roja":{
+    name:"Masticophis flagellum piceus",
+    common:"Serpiente corredora norteña roja",
+    venomous:false,
+    info:`
+      <strong>✅ NO VENENOSA</strong><br><br>
+
+      <strong>Información importante</strong><br>
+      • Serpiente muy rápida.<br>
+      • Habita zonas desérticas y abiertas.<br>
+      • Se alimenta de pequeños reptiles y roedores.<br><br>
+
+      <strong>Importancia en Baja California</strong><br>
+      • Ayuda al control natural de pequeñas plagas.<br>
+      • Participa en el equilibrio de ecosistemas áridos.<br>
+      • Es parte de la fauna característica del noroeste de México.<br><br>
+
+      <strong>En caso de mordida</strong><br>
+      • Limpiar la herida.<br>
+      • Aplicar antiséptico.<br>
+      • Mantener la zona limpia.
+    `
+  },
+
+  "No venenosa Corredora Rayada Masticophis Lateralis":{
+    name:"Masticophis lateralis",
+    common:"Corredora rayada",
+    venomous:false,
+    info:`
+      <strong>✅ NO VENENOSA</strong><br><br>
+
+      <strong>Información importante</strong><br>
+      • Conocida por sus líneas laterales.<br>
+      • Rápida y activa durante el día.<br>
+      • Vive en zonas secas y matorrales.<br><br>
+
+      <strong>Importancia en Baja California</strong><br>
+      • Controla insectos y pequeños vertebrados.<br>
+      • Ayuda al equilibrio ecológico local.<br>
+      • Forma parte de la biodiversidad bajacaliforniana.<br><br>
+
+      <strong>En caso de mordida</strong><br>
+      • Lavar bien la herida.<br>
+      • Desinfectar la zona.<br>
+      • Colocar una venda limpia si es necesario.
+    `
+  },
+
+  "No Venenosa California kingsnake":{
+    name:"Lampropeltis californiae",
+    common:"Culebra real de California",
+    venomous:false,
+    info:`
+      <strong>✅ NO VENENOSA</strong><br><br>
+
+      <strong>Información importante</strong><br>
+      • Tiene patrones blancos y negros.<br>
+      • Puede alimentarse de otras serpientes.<br>
+      • Es tranquila y beneficiosa para el ecosistema.<br><br>
+
+      <strong>Importancia en Baja California</strong><br>
+      • Ayuda a controlar plagas y otras serpientes.<br>
+      • Mantiene el equilibrio de fauna en áreas desérticas.<br>
+      • Es una especie representativa de la región.<br><br>
+
+      <strong>En caso de mordida</strong><br>
+      • Lavar la herida con agua y jabón.<br>
+      • Desinfectar correctamente.<br>
+      • Mantener limpia la zona.
+    `
+  }
+
+};
     const pp=Math.round(p.probability*100);
     const isTop=i===0,isVv=pi.venomous;
     const fc=isTop?(isVv?'bar-fill top-v':'bar-fill top-s'):(pp>10?'bar-fill med':'bar-fill');
