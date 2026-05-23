@@ -598,7 +598,7 @@ footer strong{color:var(--text2);font-weight:500}
   <!-- STATUS -->
   <div id="status-bar">
     <div class="status-dot loading" id="status-dot"></div>
-    <span id="status-text">Cargando modelo de IA… Por favor espera.</span>
+    <span id="status-text">Cargando modelo… Por favor espera.</span>
     <button class="btn btn-outline" onclick="loadModel()" id="retry-btn" style="display:none;padding:.4rem .85rem;font-size:12px">Reintentar</button>
   </div>
 
@@ -729,7 +729,7 @@ footer strong{color:var(--text2);font-weight:500}
 <!-- FOOTER -->
 <footer>
   <p>Modelo entrenado con <strong>Google Teachable Machine</strong> · TensorFlow.js</p>
-  <p>Proyecto · <strong>Víboras de la Baja California</strong> · México 🇲🇽</p>
+  <p>Proyecto · <strong>Víboras de Baja California</strong> · México 🇲🇽</p>
 </footer>
 
 <canvas id="tm-canvas"></canvas>
@@ -774,7 +774,7 @@ async function loadModel(){
         txt=document.getElementById('status-text'),
         retry=document.getElementById('retry-btn');
   dot.className='status-dot loading';
-  txt.textContent='Cargando modelo de IA…';
+  txt.textContent='Cargando modelo…';
   retry.style.display='none';
   try{
     model=await tmImage.load(MODEL_URL+'model.json',MODEL_URL+'metadata.json');
